@@ -1,8 +1,0 @@
-# Don't commit default BlueMap web things
-data/
-web/
-
-# Don't commit unuse config
-config/storages/sql.conf
-config/webapp.conf
-config/webserver.conf
