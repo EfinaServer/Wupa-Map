@@ -18,11 +18,11 @@ jobs:
       runner_name: "ubuntu-latest"
       workdir_path: "Wupa"
       maps_list: "world world_nether world_the_end"
-      mc_version: "1.21.4"
+      mc_version: "1.21.8"
       s3_provider: "synologyc2"
       s3_region: "tw-001"
       site_name: "EfinaNetwork"
-      site_content: "Minecraft 1.21.4 地圖｜嗚帕村"
+      site_content: "Minecraft 1.21.8 地圖｜嗚帕村"
       site_title: "嗚帕村"
       site_date_time: "2023/01/27 ~ Now"
       site_extra_info: '<a href="https://dashboard.simpleanalytics.com/wupa.mc-map.efina.eu.org?utm_source=wupa.mc-map.efina.eu.org&utm_content=badge" referrerpolicy="origin" target="_blank"><picture><source srcset="https://simpleanalyticsbadges.com/wupa.mc-map.efina.eu.org?mode=dark" media="(prefers-color-scheme: dark)" /><img src="https://simpleanalyticsbadges.com/wupa.mc-map.efina.eu.org?mode=light" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous" /></picture></a>'
