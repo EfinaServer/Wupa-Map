@@ -1,0 +1,17 @@
+name: BlueMap - Render Vanilla Survival
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    uses: EfinaServer/bluemap-action/.github/workflows/build-map.yml@main
+    with:
+      server-directory: Vanilla-Survival
+      netlify-site-id: cb0f9046-6542-48f2-b278-fb7110a0bd85
+    secrets:
+      PTERODACTYL_PANEL_URL: ${{ secrets.PTERODACTYL_PANEL_URL }}
+      PTERODACTYL_API_KEY: ${{ secrets.PTERODACTYL_API_KEY }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
