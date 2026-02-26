@@ -1,20 +1,15 @@
 name: BlueMap - Render WupaServer
 
 on:
-  workflow_dispatch: {}
   schedule:
-    - cron: "0 19 * * 6" # UTC / UTC+8 每周六的 3:00 
-  push:
-    branches:
-      - main
-    paths:
-      - Wupa
+    - cron: "0 16 * * 6" # UTC / UTC+8 每周日 00:00
+  workflow_dispatch: {}
 
 jobs:
   build:
     uses: EfinaServer/bluemap-action/.github/workflows/build-map.yml@main
     with:
-      runs-on: blacksmith-8vcpu-ubuntu-2404
+      runs-on: blacksmith-2vcpu-ubuntu-2404
       server-directory: Wupa
       netlify-site-id: f2ac50f8-0315-4deb-ba4d-2ad173cf8097
     secrets:

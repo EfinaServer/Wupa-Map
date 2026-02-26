@@ -9,7 +9,7 @@ jobs:
   build:
     uses: EfinaServer/bluemap-action/.github/workflows/build-map.yml@main
     with:
-      runs-on: blacksmith-8vcpu-ubuntu-2404
+      runs-on: blacksmith-2vcpu-ubuntu-2404
       server-directory: Vanilla-Survival
       netlify-site-id: cb0f9046-6542-48f2-b278-fb7110a0bd85
     secrets:
