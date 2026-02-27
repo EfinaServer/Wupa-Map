@@ -1,15 +1,17 @@
 """
 Created by yxetal
+Modified to inject directly into overworld.conf
 """
 import argparse
 import json
 import os
+import re
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
 # --- Configuration ---
 HEIGHT_Y = 80
-DEFAULT_OUTPUT_FILE = "config/maps/overworld_markers.conf"
+DEFAULT_OUTPUT_FILE = "config/maps/overworld.conf" # 改為直接指向 overworld.conf
 DEFAULT_STATION_URI = "https://wupa.ydtw.net/api/stations"
 DEFAULT_LINE_URI = "https://wupa.ydtw.net/api/lines"
 DEFAULT_RIVER_URI = "https://wupa.ydtw.net/api/rivers"
@@ -48,35 +50,27 @@ def to_hocon(obj, level=0):
 		lines = []
 		if level > 0: lines.append("{")
 		for key, value in obj.items():
-			# Don't quote keys if they are safe identifiers
 			k_str = key if key.replace("-", "").replace("_", "").isalnum() else f'"{escape_hocon_string(key)}"'
-			# Format: key: value
 			val_str = to_hocon(value, level + 1).lstrip()
-			# If value is a block (ends with }), we don't need a trailing comma implicitly in HOCON,
-			# but putting keys on new lines is key.
 			lines.append(f"{next_indent}{k_str}: {val_str}")
 
 		if level > 0:
 			lines.append(f"{indent_str}}}")
 			return "\n".join(lines)
 		else:
-			return "\n".join(lines) # Root level doesn't need wrapping brackets usually, but BlueMap accepts them.
+			return "\n".join(lines)
 
 	elif isinstance(obj, list):
-		# Check if list contains simple dicts (like points) that should be one-liners
 		is_simple_points = len(obj) > 0 and isinstance(obj[0], dict) and "x" in obj[0]
-
 		if is_simple_points:
 			lines = ["["]
 			for item in obj:
-				# Manually format points to keep them concise: { x: 1, y: 64, z: -23 }
 				props = [f"{k}: {v}" for k, v in item.items()]
 				lines.append(f"{next_indent}{{ {', '.join(props)} }}")
 			lines.append(f"{indent_str}]")
 			return "\n".join(lines)
 		else:
-			# Standard list
-			return json.dumps(obj) # Fallback to JSON list for simple primitives
+			return json.dumps(obj)
 
 	elif isinstance(obj, str):
 		return f'"{escape_hocon_string(obj)}"'
@@ -87,8 +81,6 @@ def to_hocon(obj, level=0):
 
 def load_json(uri):
 	parsed = urlparse(uri)
-
-	# Remote fetch for http/https
 	if parsed.scheme in {"http", "https"}:
 		try:
 			with urlopen(uri, timeout=30) as resp:
@@ -98,35 +90,67 @@ def load_json(uri):
 			print(f"⚠️ Failed to download {uri}: {exc}")
 			return []
 
-	# Local file fallback
 	if not os.path.exists(uri):
 		print(f"⚠️ {uri} not found.")
 		return []
 	with open(uri, 'r', encoding='utf-8') as f:
 		return json.load(f)
 
+# --- Config Injector ---
+def inject_hocon_block(file_content, key_name, new_block_str):
+	"""Finds a top-level block like 'key_name: { ... }' and replaces it."""
+	# 尋找目標 key (例如 marker-sets:) 以及它後面的第一個左大括號 '{'
+	pattern = re.compile(rf"{key_name}\s*:\s*\{{")
+	match = pattern.search(file_content)
+	
+	if not match:
+		# 如果找不到 marker-sets，就直接加在檔案最下面
+		print(f"⚠️ Could not find '{key_name}: {{' in config. Appending to end.")
+		return file_content.rstrip() + "\n\n" + new_block_str + "\n"
+
+	start_idx = match.end() - 1  # '{' 的位置
+	open_braces = 0
+	end_idx = -1
+
+	# 括號匹配邏輯，找出這個區塊在哪裡結束
+	for i in range(start_idx, len(file_content)):
+		if file_content[i] == '{':
+			open_braces += 1
+		elif file_content[i] == '}':
+			open_braces -= 1
+			if open_braces == 0:
+				end_idx = i
+				break
+
+	if end_idx != -1:
+		# 將舊的區塊替換為我們新生成的區塊
+		return file_content[:match.start()] + new_block_str + file_content[end_idx+1:]
+	else:
+		print("⚠️ Error: Unmatched braces found in config file. Aborting injection.")
+		return file_content
+
 def parse_args():
-	parser = argparse.ArgumentParser(description="Generate BlueMap markers from JSON sources.")
+	parser = argparse.ArgumentParser(description="Inject BlueMap markers from JSON sources into config.")
 	parser.add_argument(
 		"-o",
 		"--output",
 		default=DEFAULT_OUTPUT_FILE,
-		help="Output HOCON file path (default: config/maps/overworld_markers.conf)",
+		help="Target HOCON file path (default: config/maps/overworld.conf)",
 	)
 	parser.add_argument(
 		"--station-uri",
 		default=DEFAULT_STATION_URI,
-		help="Path or URI to station JSON (default: station.json)",
+		help="Path or URI to station JSON",
 	)
 	parser.add_argument(
 		"--line-uri",
 		default=DEFAULT_LINE_URI,
-		help="Path or URI to line JSON (default: line.json)",
+		help="Path or URI to line JSON",
 	)
 	parser.add_argument(
 		"--river-uri",
 		default=DEFAULT_RIVER_URI,
-		help="Path or URI to river JSON (default: river.json)",
+		help="Path or URI to river JSON",
 	)
 	return parser.parse_args()
 
@@ -208,15 +232,28 @@ def main(output_file, station_uri, line_uri, river_uri):
 			"markers": markers
 		}
 
-	# Output
-	hocon_content = to_hocon({"marker-sets": marker_sets})
+	# 產生新的 marker-sets HOCON 字串
+	new_marker_hocon = to_hocon({"marker-sets": marker_sets})
 
-	os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
-	with open(output_file, 'w', encoding='utf-8') as f:
-		f.write("# BlueMap Marker Config\n")
-		f.write(hocon_content)
-
-	print(f"✅ Generated {output_file} in BlueMap format.")
+	# 讀取並修改原本的 overworld.conf
+	if os.path.exists(output_file):
+		with open(output_file, 'r', encoding='utf-8') as f:
+			original_content = f.read()
+		
+		# 將新的 marker-sets 注入到原本的內容中
+		updated_content = inject_hocon_block(original_content, "marker-sets", new_marker_hocon)
+		
+		with open(output_file, 'w', encoding='utf-8') as f:
+			f.write(updated_content)
+		
+		print(f"✅ Successfully injected markers into {output_file}.")
+	else:
+		# 如果檔案不存在，則建立一個新的 (防呆機制)
+		os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
+		with open(output_file, 'w', encoding='utf-8') as f:
+			f.write("# BlueMap Config\n")
+			f.write(new_marker_hocon)
+		print(f"⚠️ {output_file} did not exist. Created a new one with markers.")
 
 if __name__ == "__main__":
 	args = parse_args()
