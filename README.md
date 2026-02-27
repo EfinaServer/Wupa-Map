@@ -1,2 +1,3 @@
-# onlinemap-config
-For EfinaNetwork Minecraft OnlineMap
+# Wupa 村
+
+星期日 00:00 定時繪製！
