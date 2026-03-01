@@ -1,0 +1,10 @@
+name: Refresh Maps Cache
+
+on:
+  schedule:
+    - cron: "0 0 */5 * *"    # 每 5 天，確保快取不超過 7 天
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    uses: EfinaServer/bluemap-action/.github/workflows/refresh-cache.yml@main
